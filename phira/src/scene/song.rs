@@ -1371,14 +1371,21 @@ impl SongScene {
         Ok(())
     }
 
-    fn to_chart_ref(&self) -> ChartRef {
+    fn to_bare_chart_ref(&self) -> ChartRef {
         ChartRef::new_bare(self.info.id, self.local_path.as_deref())
     }
 
     fn toggle_in(&mut self, uuid: Uuid) {
         let data = get_data();
         let col = data.collection_info(&uuid).as_ref().clone();
-        let chart_ref = self.to_chart_ref();
+        let mut chart_ref = self.to_bare_chart_ref();
+        if self.info.id.is_some() {
+            let Some(entity) = self.entity.clone() else {
+                show_message(tl!("still-loading")).error();
+                return;
+            };
+            chart_ref.info = Some(Box::new(entity));
+        }
         let add = col.charts.iter().all(|it| it != &chart_ref);
         match col.update(uuid, &[chart_ref], add) {
             CollectionUpdate::Unchanged => {}
@@ -1402,7 +1409,7 @@ impl SongScene {
         let data = get_data();
         let mut options = Vec::new();
         self.fav_menu_options.clear();
-        let chart_ref = self.to_chart_ref();
+        let chart_ref = self.to_bare_chart_ref();
         for uuid in data.collection_uuids() {
             let col = data.collection_info(uuid);
             if !col.is_owned() {
@@ -2551,7 +2558,7 @@ impl Scene for SongScene {
                     let is_fav = if let Some(fav) = self.is_fav {
                         fav
                     } else {
-                        let chart_ref = self.to_chart_ref();
+                        let chart_ref = self.to_bare_chart_ref();
                         let fav = get_data().collections().any(|col| col.charts.iter().any(|it| it == &chart_ref));
                         self.is_fav = Some(fav);
                         fav
